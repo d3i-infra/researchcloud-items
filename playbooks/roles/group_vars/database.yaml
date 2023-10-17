@@ -1,0 +1,3 @@
+database_user: my_user
+database_password: password
+database_name: my_db

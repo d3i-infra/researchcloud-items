@@ -1,0 +1,3 @@
+---
+- include_tasks: postgresql16-install.yaml
+- include_tasks: postgresql16-init.yaml
