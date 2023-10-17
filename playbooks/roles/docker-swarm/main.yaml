@@ -1,0 +1,20 @@
+---
+- name: Get Docker install script from url
+  shell: curl -fsSL https://get.docker.com -o get-docker.sh
+
+- name: Install Docker
+  shell: docker || /bin/sh get-docker.sh
+
+- name: Start Docker in swarm mode
+  shell: docker swarm init 
+  register: result
+  failed_when:
+      - result.rc == 1
+      - '"already part of a swarm" not in result.stderr'
+    
+# Not really needed as the docker container changes to nobody user at runtime
+- name: Create the system user 'dockeruser' add to the 'docker' group
+  user:
+      name: dockeruser
+      groups: docker
+      append: yes

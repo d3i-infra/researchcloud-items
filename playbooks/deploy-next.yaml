@@ -8,3 +8,131 @@
 
   roles:
     - role: postgres
+    - role: nginx
+    - role: certbot
+    - role: docker-swarm
+  tasks:
+
+    ##################################################
+    # Configure psql database
+    # 
+    - name: Create postgresql superuser with encrypted password this will be the only user of the db
+      shell: |
+        psql -c "SELECT 1 FROM pg_roles WHERE rolname='{{ database_user }}'" | grep -q 1 ||  
+        psql -c "CREATE USER {{ database_user }} WITH SUPERUSER ENCRYPTED PASSWORD '{{ database_password }}';"
+      become_user: postgres
+
+    - name: Create database
+      shell: | 
+        psql -l | grep "{{ database_name }}" ||
+        psql -c "CREATE DATABASE {{ database_name }};"
+      become_user: postgres
+
+    ##################################################
+    # Install certificates
+    #
+    - name: Obtain certificates and modify nginx config
+      shell: certbot --nginx --non-interactive --agree-tos -m {{ email }} --domain {{ domain_name }}
+
+    ##################################################
+    # Configure Nginx as a reverse proxy
+    #
+    - name: Add ansible markers in /etc/nginx/sites-available/default
+      shell: perl -0 -i -pe 's/(.*server {.*?location \/ {)(.*?)(}.*? listen \[::\]:443 ssl ipv6only=on;.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/sites-available/default
+
+    # Configure Nginx as reverse proxy added configs for Phoenix
+    - name: Fill the location block of the ssl block
+      blockinfile:
+        path: /etc/nginx/sites-available/default
+        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        block: |
+          allow all;
+
+          proxy_http_version 1.1;
+          proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+          proxy_set_header Host $http_host;
+          proxy_set_header X-Cluster-Client-Ip $remote_addr;
+
+          proxy_set_header Upgrade $http_upgrade;
+          proxy_set_header Connection "upgrade";
+
+          proxy_pass http://localhost:8000;
+
+    - name: Check whether the nginx configuration is valid
+      shell: nginx -t
+
+    - name: Restart the Nginx service
+      ansible.builtin.systemd:
+        name: nginx.service
+        state: restarted
+        daemon_reload: true
+
+
+    ##################################################
+    # Build and Run Next with Docker
+    #
+    - name: Populate secrets for Next in Docker secrets
+      shell: |
+        echo "secret1" | docker secret create secret-1 - && 
+        echo "secret2" | docker secret create secret-2 - &&
+        echo "secret3" | docker secret create secret-3 - &&
+        echo "secret4" | docker secret create secret-4 -
+      register: result
+      failed_when:
+          - result.rc == 1
+          - '"already exists" not in result.stderr'
+
+    - name: Clone Next from Github
+      git:
+        repo: https://github.com/trbKnl/portserver
+        single_branch: yes
+        version: master
+        dest: ./portserver
+
+    - name: Build Next with Docker build
+      shell:
+        cmd: docker build . -t portserver:latest
+        chdir: portserver/
+
+    - name: Start Next on Docker Swarm with a compose file as user 'dockeruser'
+      shell: |
+        cat - <<EOF | docker stack deploy --compose-file - nextdeployment
+        version: "3.9"
+
+        services:
+           next:
+             image: portserver:latest
+             environment:
+               MY_KEY_LOCATIONS: /run/secrets/secret-1
+               DB_NAME: "{{ database_name }}"
+               DB_HOST: 172.17.0.1
+               DB_USER: "{{ database_user }}"
+               DB_PASS: "{{ database_password }}"
+               SECRET_KEY_BASE: "{{ secret_key_base }}"
+               PHX_HOST: "https://{{ domain_name }}"
+               PHX_SERVER: "true"
+               PORT: 8000
+               CLOAK_KEY: ljpT3WuKUDPlW36HqdJr8I4yYnDtsteTTzjTNacTWFg=
+               ADMIN_PASSWORD: password
+               ADMIN_EMAIL: email@admin.com
+             ports:
+                 - target: 8000
+                   published: 8000
+                   mode: host
+             secrets:
+               - secret-1
+               - secret-2
+               - secret-3
+               - secret-4
+        
+        secrets:
+            secret-1:
+                external: true
+            secret-2:
+                external: true
+            secret-3:
+                external: true
+            secret-4:
+                external: true
+        EOF
+      become_user: dockeruser

@@ -1,0 +1,8 @@
+- name: Install certbot via snap (recommended by certbot)
+  shell: snap install --classic certbot
+
+- name: Create a symbolic link to the certbot binary
+  file:
+    src: /snap/bin/certbot
+    dest: /usr/bin/certbot
+    state: link

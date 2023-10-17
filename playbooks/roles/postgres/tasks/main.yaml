@@ -1,3 +1,41 @@
 ---
-- include_tasks: postgresql16-install.yaml
-- include_tasks: postgresql16-init.yaml
+- name: Add pgdg repo to sources.list.d
+  lineinfile:
+    path: /etc/apt/sources.list.d/pgdg.list
+    line: "deb http://apt.postgresql.org/pub/repos/apt {{ ansible_distribution_release }}-pgdg main"
+    create: true
+
+- name: Download PostgreSQL key and add it to system keyring
+  apt_key:
+    url: https://www.postgresql.org/media/keys/ACCC4CF8.asc
+    state: present
+
+- name: Update apt cache
+  apt:
+    update_cache: yes
+
+- name: Install PostgreSQL
+  apt:
+    name: postgresql-16
+    state: present
+
+- name: Install acl so ansible can change into the postgres user
+  apt:
+    name: acl
+    state: present
+
+- name: Add listen_addresses to /etc/postgresql/16/main/postgresql.conf
+  shell: |
+    grep -Fx "listen_addresses = '*'" /etc/postgresql/16/main/postgresql.conf ||
+    echo "listen_addresses = '*'" >> /etc/postgresql/16/main/postgresql.conf
+
+- name: Add host based configuration to /etc/postgresql/16/main/pg_hba.conf
+  shell: |
+    grep -Fx  "host    all             all             172.17.0.0/16           scram-sha-256" /etc/postgresql/16/main/pg_hba.conf ||
+    echo "host    all             all             172.17.0.0/16           scram-sha-256" >> /etc/postgresql/16/main/pg_hba.conf 
+
+- name: Reload postgresql service
+  ansible.builtin.systemd:
+    name: postgresql.service
+    state: restarted
+    daemon_reload: true
