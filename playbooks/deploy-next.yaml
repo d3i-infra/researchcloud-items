@@ -5,6 +5,7 @@
   become: yes
   vars_files:
     - ./group_vars/database.yaml
+    - ./group_vars/domain.yaml
 
   roles:
     - role: postgres
