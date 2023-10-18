@@ -86,8 +86,7 @@
     - name: Clone Next from Github
       git:
         repo: https://github.com/trbKnl/portserver
-        single_branch: yes
-        version: master
+        update: yes
         dest: ./portserver
 
     - name: Build Next with Docker build
