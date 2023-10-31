@@ -6,38 +6,42 @@
   vars_files:
     - ./group_vars/database.yaml
     - ./group_vars/domain.yaml
-
+    - ./group_vars/next.yaml
   roles:
     - role: postgres
     - role: nginx
     - role: certbot
     - role: docker-swarm
+    - role: td-agent
+    - role: rsyslogd
   tasks:
 
     ##################################################
     # Configure psql database
-    # 
+     
     - name: Create postgresql superuser with encrypted password this will be the only user of the db
       shell: |
         psql -c "SELECT 1 FROM pg_roles WHERE rolname='{{ database_user }}'" | grep -q 1 ||  
         psql -c "CREATE USER {{ database_user }} WITH SUPERUSER ENCRYPTED PASSWORD '{{ database_password }}';"
       become_user: postgres
+      no_log: true
 
     - name: Create database
       shell: | 
         psql -l | grep "{{ database_name }}" ||
         psql -c "CREATE DATABASE {{ database_name }};"
       become_user: postgres
+      no_log: true
 
     ##################################################
     # Install certificates
-    #
+    
     - name: Obtain certificates and modify nginx config
       shell: certbot --nginx --non-interactive --agree-tos -m {{ email }} --domain {{ domain_name }}
 
     ##################################################
     # Configure Nginx as a reverse proxy
-    #
+    
     - name: Add ansible markers in /etc/nginx/sites-available/default
       shell: perl -0 -i -pe 's/(.*server {.*?location \/ {)(.*?)(}.*? listen \[::\]:443 ssl ipv6only=on;.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/sites-available/default
 
@@ -71,7 +75,7 @@
 
     ##################################################
     # Build and Run Next with Docker
-    #
+    
     - name: Populate secrets for Next in Docker secrets
       shell: |
         echo "secret1" | docker secret create secret-1 - && 
@@ -115,6 +119,11 @@
                CLOAK_KEY: ljpT3WuKUDPlW36HqdJr8I4yYnDtsteTTzjTNacTWFg=
                ADMIN_PASSWORD: password
                ADMIN_EMAIL: email@admin.com
+             logging:
+               driver: "fluentd"
+               options:
+                 fluentd-address: 172.17.0.1:24224
+                 tag: next
              ports:
                  - target: 8000
                    published: 8000

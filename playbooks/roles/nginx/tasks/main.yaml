@@ -10,6 +10,12 @@
 - name: Include sites-enabled/default explicitly in nginx.conf, so it can be validated by nginx -t
   shell: sed -i -e 's/include \/etc\/nginx\/sites-enabled\/\*;/include \/etc\/nginx\/sites-enabled\/default;/g' /etc/nginx/nginx.conf
 
+- name: Change access_log configuration; send access logs to rsyslog
+  shell: sed -i -e 's/access_log.*;/access_log syslog:server=unix:\/dev\/log,facility=local7,tag=nginx;/g' /etc/nginx/nginx.conf
+
+- name: Change error_log configuration; send error logs to rsyslog
+  shell: sed -i -e 's/access_log.*;/error_log syslog:server=unix:\/dev\/log,facility=local7,tag=nginx;/g' /etc/nginx/nginx.conf
+
 - name: Restart the Nginx service
   ansible.builtin.systemd:
     name: nginx.service
