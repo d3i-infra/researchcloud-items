@@ -11,9 +11,9 @@
     - role: postgres
     - role: nginx
     - role: certbot
-    - role: docker-swarm
     - role: td-agent
     - role: rsyslogd
+    - role: docker-swarm
   tasks:
 
     ##################################################
