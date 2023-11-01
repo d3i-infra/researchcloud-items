@@ -14,7 +14,7 @@
   shell: sed -i -e 's/access_log.*;/access_log syslog:server=unix:\/dev\/log,facility=local7,tag=nginx;/g' /etc/nginx/nginx.conf
 
 - name: Change error_log configuration; send error logs to rsyslog
-  shell: sed -i -e 's/access_log.*;/error_log syslog:server=unix:\/dev\/log,facility=local7,tag=nginx;/g' /etc/nginx/nginx.conf
+  shell: sed -i -e 's/error_log.*;/error_log syslog:server=unix:\/dev\/log,facility=local7,tag=nginx;/g' /etc/nginx/nginx.conf
 
 - name: Restart the Nginx service
   ansible.builtin.systemd:
