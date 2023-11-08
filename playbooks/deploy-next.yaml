@@ -119,6 +119,9 @@
                CLOAK_KEY: ljpT3WuKUDPlW36HqdJr8I4yYnDtsteTTzjTNacTWFg=
                ADMIN_PASSWORD: password
                ADMIN_EMAIL: email@admin.com
+               YODA_URL: "{{ yoda_url }}"
+               YODA_USERNAME: "{{ yoda_username }}"
+               YODA_PASSWORD: "{{ yoda_password }}"
              logging:
                driver: "fluentd"
                options:
