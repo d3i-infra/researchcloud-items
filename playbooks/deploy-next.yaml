@@ -80,12 +80,12 @@
       git:
         repo: https://github.com/d3i-infra/mono
         update: yes
-        dest: ./next
+        dest: ./mono
 
     - name: Build Next with Docker build
       shell:
         cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t next:latest
-        chdir: next/
+        chdir: mono/core
 
     - name: Start Next on Docker Swarm with a compose file as user 'dockeruser'
       shell: |
