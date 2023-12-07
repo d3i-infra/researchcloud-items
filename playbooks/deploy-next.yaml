@@ -37,7 +37,7 @@
     # Install certificates
     
     - name: Obtain certificates and modify nginx config
-      shell: certbot --nginx --non-interactive --agree-tos -m {{ email }} --domain {{ domain_name }}
+      shell: certbot --nginx --non-interactive --agree-tos -m {{ admin_email_gmail }} --domain {{ domain_name }}
 
     ##################################################
     # Configure Nginx as a reverse proxy
