@@ -76,27 +76,16 @@
     ##################################################
     # Build and Run Next with Docker
     
-    - name: Populate secrets for Next in Docker secrets
-      shell: |
-        echo "secret1" | docker secret create secret-1 - && 
-        echo "secret2" | docker secret create secret-2 - &&
-        echo "secret3" | docker secret create secret-3 - &&
-        echo "secret4" | docker secret create secret-4 -
-      register: result
-      failed_when:
-          - result.rc == 1
-          - '"already exists" not in result.stderr'
-
     - name: Clone Next from Github
       git:
-        repo: https://github.com/trbKnl/portserver
+        repo: https://github.com/d3i-infra/mono
         update: yes
-        dest: ./portserver
+        dest: ./next
 
     - name: Build Next with Docker build
       shell:
-        cmd: docker build . -t portserver:latest
-        chdir: portserver/
+        cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t next:latest
+        chdir: next/
 
     - name: Start Next on Docker Swarm with a compose file as user 'dockeruser'
       shell: |
@@ -105,23 +94,22 @@
 
         services:
            next:
-             image: portserver:latest
+             image: next:latest
              environment:
-               MY_KEY_LOCATIONS: /run/secrets/secret-1
+               APP_NAME: "{{ app_name }}"
+               APP_DOMAIN: "{{ domain_name }}"
+               APP_MAIL_DOMAIN: @gmail
+               APP_ADMINS: "{{ admin_email_gmail }}"
                DB_NAME: "{{ database_name }}"
                DB_HOST: 172.17.0.1
                DB_USER: "{{ database_user }}"
                DB_PASS: "{{ database_password }}"
                SECRET_KEY_BASE: "{{ secret_key_base }}"
-               PHX_HOST: "https://{{ domain_name }}"
-               PHX_SERVER: "true"
-               PORT: 8000
-               CLOAK_KEY: ljpT3WuKUDPlW36HqdJr8I4yYnDtsteTTzjTNacTWFg=
-               ADMIN_PASSWORD: password
-               ADMIN_EMAIL: email@admin.com
-               YODA_URL: "{{ yoda_url }}"
-               YODA_USERNAME: "{{ yoda_username }}"
-               YODA_PASSWORD: "{{ yoda_password }}"
+               STATIC_PATH: /var/tmp
+               UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
+               UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
+               GOOGLE_SIGN_IN_CLIENT_ID: "{{ google_sign_in_client_id }}"
+               GOOGLE_SIGN_IN_CLIENT_SECRET: "{{ google_sign_in_client_secret }}"
              logging:
                driver: "fluentd"
                options:
@@ -131,20 +119,5 @@
                  - target: 8000
                    published: 8000
                    mode: host
-             secrets:
-               - secret-1
-               - secret-2
-               - secret-3
-               - secret-4
-        
-        secrets:
-            secret-1:
-                external: true
-            secret-2:
-                external: true
-            secret-3:
-                external: true
-            secret-4:
-                external: true
         EOF
       become_user: dockeruser
