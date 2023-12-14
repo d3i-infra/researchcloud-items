@@ -10,10 +10,9 @@
   roles:
     - role: postgres
     - role: nginx
-    - role: certbot
     - role: td-agent
     - role: rsyslogd
-    - role: docker-swarm
+    - role: docker
   tasks:
 
     ##################################################
@@ -34,33 +33,48 @@
       no_log: true
 
     ##################################################
-    # Install certificates
-    
-    - name: Obtain certificates and modify nginx config
-      shell: certbot --nginx --non-interactive --agree-tos -m {{ admin_email_gmail }} --domain {{ domain_name }}
-
-    ##################################################
     # Configure Nginx as a reverse proxy
+    # This configuration is dependent on the SRC-NGINX component provided by Surf
     
     - name: Add ansible markers in /etc/nginx/sites-available/default
-      shell: perl -0 -i -pe 's/(.*server {.*?location \/ {)(.*?)(}.*? listen \[::\]:443 ssl ipv6only=on;.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/sites-available/default
+      shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 80.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/ssl_main.conf
 
     # Configure Nginx as reverse proxy added configs for Phoenix
+    # The admin route is protected by Surf SRAM
     - name: Fill the location block of the ssl block
       blockinfile:
         path: /etc/nginx/sites-available/default
         marker: "# {mark} ANSIBLE MANAGED BLOCK"
         block: |
-          allow all;
-          proxy_pass                http://localhost:8000;
-          proxy_set_header          X-Forwarded-Proto $scheme;
-          proxy_set_header          X-Forwarded-For $remote_addr;
-          proxy_set_header          X-Real-IP $remote_addr;
-          proxy_set_header          Host $http_host;
-          proxy_http_version        1.1;
-          proxy_set_header          Upgrade $http_upgrade;
-          proxy_set_header          Connection "upgrade";
-          proxy_max_temp_file_size  1m;
+          location /admin {
+            error_page 401 = @custom_401;
+            auth_request /validate;
+            auth_request_set $username $upstream_http_username;
+
+            allow all;
+            proxy_pass                http://localhost:8000;
+            proxy_set_header          X-Forwarded-Proto $scheme;
+            proxy_set_header          X-Forwarded-For $remote_addr;
+            proxy_set_header          X-Real-IP $remote_addr;
+            proxy_set_header          Host $http_host;
+            proxy_http_version        1.1;
+            proxy_set_header          Upgrade $http_upgrade;
+            proxy_set_header          Connection "upgrade";
+            proxy_max_temp_file_size  1m;
+          }
+
+          location / {
+            allow all;
+            proxy_pass                http://localhost:8000;
+            proxy_set_header          X-Forwarded-Proto $scheme;
+            proxy_set_header          X-Forwarded-For $remote_addr;
+            proxy_set_header          X-Real-IP $remote_addr;
+            proxy_set_header          Host $http_host;
+            proxy_http_version        1.1;
+            proxy_set_header          Upgrade $http_upgrade;
+            proxy_set_header          Connection "upgrade";
+            proxy_max_temp_file_size  1m;
+          }
 
     - name: Check whether the nginx configuration is valid
       shell: nginx -t
@@ -71,6 +85,16 @@
         state: restarted
         daemon_reload: true
 
+    ##################################################
+    # Create folder that can be mounted inside the container for persistance
+   
+    - name: Create that can be mounted inside the container
+      file:
+        path: /static
+        state: directory
+        owner: root
+        group: root
+        mode: "0777"
 
     ##################################################
     # Build and Run Next with Docker
@@ -86,37 +110,43 @@
         cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t next:latest
         chdir: mono/core
 
-    - name: Start Next on Docker Swarm with a compose file as user 'dockeruser'
-      shell: |
-        cat - <<EOF | docker stack deploy --compose-file - nextdeployment
-        version: "3.9"
+    - name: Create Docker Compose file
+      blockinfile:
+        path: /docker-compose.yaml
+        create: yes
+        block: |
+          version: "3"
 
-        services:
-           next:
-             image: next:latest
-             environment:
-               APP_NAME: "{{ app_name }}"
-               APP_DOMAIN: "{{ domain_name }}"
-               APP_MAIL_DOMAIN: "@gmail"
-               APP_ADMINS: "{{ admin_email_gmail }}"
-               DB_NAME: "{{ database_name }}"
-               DB_HOST: 172.17.0.1
-               DB_USER: "{{ database_user }}"
-               DB_PASS: "{{ database_password }}"
-               SECRET_KEY_BASE: "{{ secret_key_base }}"
-               STATIC_PATH: /var/tmp
-               UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
-               UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
-               GOOGLE_SIGN_IN_CLIENT_ID: "{{ google_sign_in_client_id }}"
-               GOOGLE_SIGN_IN_CLIENT_SECRET: "{{ google_sign_in_client_secret }}"
-             logging:
-               driver: "fluentd"
-               options:
-                 fluentd-address: 172.17.0.1:24224
-                 tag: next
-             ports:
-                 - target: 8000
-                   published: 8000
-                   mode: host
-        EOF
-      become_user: dockeruser
+          services:
+             next:
+               image: next:latest
+               environment:
+                 APP_NAME: "{{ app_name }}"
+                 APP_DOMAIN: "{{ domain_name }}"
+                 APP_MAIL_DOMAIN: "@gmail"
+                 APP_ADMINS: "{{ admin_email_gmail }}"
+                 DB_NAME: "{{ database_name }}"
+                 DB_HOST: 172.17.0.1
+                 DB_USER: "{{ database_user }}"
+                 DB_PASS: "{{ database_password }}"
+                 SECRET_KEY_BASE: "{{ secret_key_base }}"
+                 STATIC_PATH: /static
+                 UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
+                 UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
+                 GOOGLE_SIGN_IN_CLIENT_ID: "{{ google_sign_in_client_id }}"
+                 GOOGLE_SIGN_IN_CLIENT_SECRET: "{{ google_sign_in_client_secret }}"
+               logging:
+                 driver: "fluentd"
+                 options:
+                   fluentd-address: 172.17.0.1:24224
+                   tag: next
+               ports:
+                 - "8000:8000"
+               network_mode: bridge
+               volumes:
+                 - /static:/static
+
+    - name: Start container using the compose file
+      command: docker-compose -p "next" up -d
+      args:
+        chdir: /
