@@ -4,15 +4,18 @@
   gather_facts: yes
   become: yes
   vars_files:
-    - ./group_vars/database.yaml
-    - ./group_vars/domain.yaml
-    - ./group_vars/next.yaml
+    - ./external_vars.yaml
   roles:
     - role: postgres
+      tags: postgres_tag
     - role: nginx
+      tags: nginx_tag
     - role: td-agent
+      tags: td-agent_tag
     - role: rsyslogd
+      tags: rsyslogd_tag
     - role: docker
+      tags: docker_tag
   tasks:
 
     ##################################################
@@ -36,14 +39,14 @@
     # Configure Nginx as a reverse proxy
     # This configuration is dependent on the SRC-NGINX component provided by Surf
     
-    - name: Add ansible markers in /etc/nginx/sites-available/default
+    - name: Add ansible markers in /etc/nginx/conf.d/ssl_main.conf
       shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 80.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/ssl_main.conf
 
     # Configure Nginx as reverse proxy added configs for Phoenix
     # The admin route is protected by Surf SRAM
     - name: Fill the location block of the ssl block
       blockinfile:
-        path: /etc/nginx/sites-available/default
+        path: /etc/nginx/conf.d/ssl_main.conf
         marker: "# {mark} ANSIBLE MANAGED BLOCK"
         block: |
           location /admin {
@@ -75,6 +78,9 @@
             proxy_set_header          Connection "upgrade";
             proxy_max_temp_file_size  1m;
           }
+
+    - name: After sram login redirect to the /admin/login route of Next
+      shell: sed -i -e 's/return 302 $scheme:\/\/$http_host\/;/return 302 $scheme:\/\/$http_host\/admin\/login;/g' /etc/nginx/app-location-conf.d/authentication.conf
 
     - name: Check whether the nginx configuration is valid
       shell: nginx -t
@@ -145,6 +151,7 @@
                network_mode: bridge
                volumes:
                  - /static:/static
+               restart: always
 
     - name: Start container using the compose file
       command: docker-compose -p "next" up -d

@@ -10,5 +10,5 @@
 
 - name: Ensure Docker Compose is executable
   file:
-  path: /usr/local/bin/docker-compose
-  mode: 'a+x'  # Ensure the file has executable permissions
+    path: /usr/local/bin/docker-compose
+    mode: 'a+x'  # Ensure the file has executable permissions
