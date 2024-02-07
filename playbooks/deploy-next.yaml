@@ -129,8 +129,7 @@
                environment:
                  APP_NAME: "{{ app_name }}"
                  APP_DOMAIN: "{{ domain_name }}"
-                 APP_MAIL_DOMAIN: "@gmail"
-                 APP_ADMINS: "{{ admin_email_gmail }}"
+                 APP_MAIL_DOMAIN: "@notrelevantanymore.com"
                  DB_NAME: "{{ database_name }}"
                  DB_HOST: 172.17.0.1
                  DB_USER: "{{ database_user }}"
@@ -139,8 +138,6 @@
                  STATIC_PATH: /static
                  UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
                  UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
-                 GOOGLE_SIGN_IN_CLIENT_ID: "{{ google_sign_in_client_id }}"
-                 GOOGLE_SIGN_IN_CLIENT_SECRET: "{{ google_sign_in_client_secret }}"
                logging:
                  driver: "fluentd"
                  options:
