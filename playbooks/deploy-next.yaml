@@ -138,7 +138,7 @@
                  STATIC_PATH: /static
                  UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
                  UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
-                 STORAGE_SERVICES: "azure, yoda, aws"
+                 STORAGE_SERVICES: "azure, yoda, surfresearchdrive"
                logging:
                  driver: "fluentd"
                  options:
