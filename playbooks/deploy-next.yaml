@@ -39,6 +39,34 @@
     # Configure Nginx as a reverse proxy
     # This configuration is dependent on the SRC-NGINX component provided by Surf
     
+    # Create authentication script
+    - name: Ensure auth directory exists
+      file:
+        path: /auth
+        state: directory
+        owner: www-data
+        group: www-data
+        mode: '0755'
+
+    - name: Create auth.sh script
+      copy:
+        dest: /auth/auth.sh
+        content: |
+          #!/bin/bash
+          username="$USERNAME"
+          userid=$(id -u "$username" 2>/dev/null)
+          if [ $? -ne 0 ]; then
+              echo -e "Status: 403 Forbidden\n"
+              echo "Authorization failed"
+          else
+              echo "Status: 200"
+              echo "X-Accel-Redirect: /protected"
+              echo ""
+          fi
+        owner: www-data
+        group: www-data
+        mode: '0755'
+    
     - name: Add ansible markers in /etc/nginx/conf.d/ssl_main.conf
       shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 443.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/ssl_main.conf
 
@@ -54,8 +82,16 @@
             auth_request /validate;
             auth_request_set $username $upstream_http_username;
 
-            allow all;
-            proxy_pass                http://localhost:8000;
+            include /etc/nginx/fastcgi_params;
+            fastcgi_pass unix:/var/run/fcgiwrap.socket;
+            fastcgi_param SCRIPT_FILENAME /auth/auth.sh;
+            fastcgi_param USERNAME $username;
+          }
+
+          location /protected {
+            internal;
+
+            proxy_pass                http://localhost:8000/admin/login;
             proxy_set_header          X-Forwarded-Proto $scheme;
             proxy_set_header          X-Forwarded-For $remote_addr;
             proxy_set_header          X-Real-IP $remote_addr;
@@ -78,9 +114,6 @@
             proxy_set_header          Connection "upgrade";
             proxy_max_temp_file_size  1m;
           }
-
-    - name: After sram login redirect to the /admin/login route of Next
-      shell: sed -i -e 's/return 302 $scheme:\/\/$http_host\/;/return 302 $scheme:\/\/$http_host\/admin\/login;/g' /etc/nginx/app-location-conf.d/authentication.conf
 
     - name: Check whether the nginx configuration is valid
       shell: nginx -t
