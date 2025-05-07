@@ -61,6 +61,7 @@
           else
               echo "Status: 200"
               echo "X-Accel-Redirect: /protected"
+              echo "X-Username: $username"
               echo ""
           fi
         owner: www-data
@@ -91,7 +92,12 @@
           location /protected {
             internal;
 
-            proxy_pass                http://localhost:8000/admin/login;
+            set $username_param "";
+            if ($http_x_username != "") {
+              set $username "$http_x_username";
+            }
+
+            proxy_pass                http://localhost:8000/admin/login/$username;
             proxy_set_header          X-Forwarded-Proto $scheme;
             proxy_set_header          X-Forwarded-For $remote_addr;
             proxy_set_header          X-Real-IP $remote_addr;
