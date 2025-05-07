@@ -169,6 +169,7 @@
                  APP_NAME: "{{ app_name }}"
                  APP_DOMAIN: "{{ domain_name }}"
                  APP_MAIL_DOMAIN: "@notrelevantanymore.com"
+                 APP_ADMINS: "{{ surf_username }}"
                  DB_NAME: "{{ database_name }}"
                  DB_HOST: 172.17.0.1
                  DB_USER: "{{ database_user }}"
