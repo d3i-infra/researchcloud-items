@@ -164,7 +164,7 @@
                 APP_MAIL_DOMAIN: "@notrelevantanymore.com"
                 APP_ADMINS: "{{ surf_username }}"
                 DB_NAME: "{{ database_name }}"
-                DB_HOST: 172.17.0.1
+                DB_HOST: db
                 DB_USER: "{{ database_user }}"
                 DB_PASS: "{{ database_password }}"
                 SECRET_KEY_BASE: "{{ secret_key_base }}"
