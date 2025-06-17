@@ -137,7 +137,7 @@
     - name: Copy ca.crt to root directory
       copy:
         src: ca.crt
-        dest: /server.key
+        dest: /ca.crt
 
     # build
     - name: Build Next with Docker build
