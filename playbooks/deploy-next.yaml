@@ -122,7 +122,7 @@
 
     # create certificates for postgres
     - name: Run certificate generation script
-      script: /mono/postgres_ssl/generate.sh
+      script: ./mono/postgres_ssl/generate.sh
 
     - name: Copy server.crt to root directory
       copy:
