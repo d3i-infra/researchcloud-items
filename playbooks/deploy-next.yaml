@@ -6,8 +6,6 @@
     #vars_files:
     #  - ./external_vars.yaml
   roles:
-    - role: postgres
-      tags: postgres_tag
     - role: nginx
       tags: nginx_tag
     - role: td-agent
@@ -17,23 +15,6 @@
     - role: docker
       tags: docker_tag
   tasks:
-
-    ##################################################
-    # Configure psql database
-     
-    - name: Create postgresql superuser with encrypted password this will be the only user of the db
-      shell: |
-        psql -c "SELECT 1 FROM pg_roles WHERE rolname='{{ database_user }}'" | grep -q 1 ||  
-        psql -c "CREATE USER {{ database_user }} WITH SUPERUSER ENCRYPTED PASSWORD '{{ database_password }}';"
-      become_user: postgres
-      no_log: true
-
-    - name: Create database
-      shell: | 
-        psql -l | grep "{{ database_name }}" ||
-        psql -c "CREATE DATABASE {{ database_name }};"
-      become_user: postgres
-      no_log: true
 
     ##################################################
     # Configure Nginx as a reverse proxy
@@ -131,17 +112,6 @@
         daemon_reload: true
 
     ##################################################
-    # Create folder that can be mounted inside the container for persistance
-   
-    - name: Create that can be mounted inside the container
-      file:
-        path: /static
-        state: directory
-        owner: root
-        group: root
-        mode: "0777"
-
-    ##################################################
     # Build and Run Next with Docker
     
     - name: Clone Next from Github
@@ -150,11 +120,32 @@
         update: yes
         dest: ./mono
 
+    # create certificates for postgres
+    - name: Run certificate generation script
+      script: /mono/postgres_ssl/generate.sh
+
+    - name: Copy server.crt to root directory
+      copy:
+        src: server.crt
+        dest: /server.crt
+
+    - name: Copy server.key to root directory
+      copy:
+        src: server.key
+        dest: /server.key
+
+    - name: Copy ca.crt to root directory
+      copy:
+        src: ca.crt
+        dest: /server.key
+
+    # build
     - name: Build Next with Docker build
       shell:
         cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t next:latest
         chdir: mono/core
 
+    # deploy
     - name: Create Docker Compose file
       blockinfile:
         path: /docker-compose.yaml
@@ -163,33 +154,62 @@
           version: "3"
 
           services:
-             next:
-               image: next:latest
-               environment:
-                 APP_NAME: "{{ app_name }}"
-                 APP_DOMAIN: "{{ domain_name }}"
-                 APP_MAIL_DOMAIN: "@notrelevantanymore.com"
-                 APP_ADMINS: "{{ surf_username }}"
-                 DB_NAME: "{{ database_name }}"
-                 DB_HOST: 172.17.0.1
-                 DB_USER: "{{ database_user }}"
-                 DB_PASS: "{{ database_password }}"
-                 SECRET_KEY_BASE: "{{ secret_key_base }}"
-                 STATIC_PATH: /static
-                 UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
-                 UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
-                 STORAGE_SERVICES: "azure, yoda, surfresearchdrive"
-               logging:
-                 driver: "fluentd"
-                 options:
-                   fluentd-address: 172.17.0.1:24224
-                   tag: next
-               ports:
-                 - "8000:8000"
-               network_mode: bridge
-               volumes:
-                 - /static:/static
-               restart: always
+            app:
+              image: self-d3i:latest
+              container_name: self-d3i
+              restart: always
+              environment:
+                APP_NAME: "{{ app_name }}"
+                APP_DOMAIN: "{{ domain_name }}"
+                APP_MAIL_DOMAIN: "@notrelevantanymore.com"
+                APP_ADMINS: "{{ surf_username }}"
+                DB_NAME: "{{ database_name }}"
+                DB_HOST: 172.17.0.1
+                DB_USER: "{{ database_user }}"
+                DB_PASS: "{{ database_password }}"
+                SECRET_KEY_BASE: "{{ secret_key_base }}"
+                STATIC_PATH: "/tmp"
+                UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
+                UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
+                STORAGE_SERVICES: "builtin"
+                DB_TLS_VERIFY: verify_peer
+                DB_CA_PATH: /ca.crt
+              volumes:
+                - app_data:/tmp
+                - /ca.crt:/ca.crt
+              depends_on:
+                - db
+              logging:
+                driver: "fluentd"
+                options:
+                  fluentd-address: 172.17.0.1:24224
+                  tag: next
+              ports:
+                - "8000:8000"
+              network_mode: bridge
+
+            db:
+              image: postgres:15
+              container_name: db-next
+              restart: always
+              user: root
+              environment:
+                POSTGRES_USER: user
+                POSTGRES_PASSWORD: password
+                POSTGRES_DB: test_database
+              volumes:
+                - postgres_data:/var/lib/postgresql/data
+                - /server.crt:/var/lib/postgresql/ssl/server.crt
+                - /server.key:/var/lib/postgresql/ssl/server.key
+              command: |
+                bash -c "
+                  chown postgres:postgres /var/lib/postgresql/ssl/server.key &&
+                  exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt -c ssl_key_file=/var/lib/postgresql/ssl/server.key
+                "
+
+          volumes:
+            postgres_data:
+            app_data:
 
     - name: Start container using the compose file
       command: docker-compose -p "next" up -d
