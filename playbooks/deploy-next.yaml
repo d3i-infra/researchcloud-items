@@ -142,7 +142,7 @@
     # build
     - name: Build Next with Docker build
       shell:
-        cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t next:latest
+        cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t self-d3i:latest
         chdir: mono/core
 
     # deploy
