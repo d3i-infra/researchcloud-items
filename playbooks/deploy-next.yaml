@@ -194,9 +194,9 @@
               restart: always
               user: root
               environment:
-                POSTGRES_USER: user
-                POSTGRES_PASSWORD: password
-                POSTGRES_DB: test_database
+                POSTGRES_USER: "{{ database_user }}"
+                POSTGRES_PASSWORD: "{{ database_password }}"
+                POSTGRES_DB: "{{ database_name }}"
               volumes:
                 - postgres_data:/var/lib/postgresql/data
                 - /server.crt:/var/lib/postgresql/ssl/server.crt
@@ -204,6 +204,7 @@
               command: |
                 bash -c "
                   chown postgres:postgres /var/lib/postgresql/ssl/server.key &&
+                  chmod 600 /var/lib/postgresql/ssl/server.key &&
                   exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt -c ssl_key_file=/var/lib/postgresql/ssl/server.key
                 "
 
