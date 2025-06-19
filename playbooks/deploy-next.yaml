@@ -186,7 +186,6 @@
                   tag: next
               ports:
                 - "8000:8000"
-              network_mode: bridge
 
             db:
               image: postgres:15
