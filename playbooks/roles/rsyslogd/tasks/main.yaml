@@ -1,5 +1,5 @@
 ---
-- name: Send rsyslogd logs to td-agent
+- name: Send rsyslogd logs to fluentd
   lineinfile:
     path: /etc/rsyslog.conf
     line: "*.* @127.0.0.1:5140"

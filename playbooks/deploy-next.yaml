@@ -8,8 +8,8 @@
   roles:
     - role: nginx
       tags: nginx_tag
-    - role: td-agent
-      tags: td-agent_tag
+    - role: fluentd
+      tags: fluentd
     - role: rsyslogd
       tags: rsyslogd_tag
     - role: docker

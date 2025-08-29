@@ -1,10 +1,10 @@
 ---
-- name: Install td-agent (a stable version of fluentd)
-  shell: curl -fsSL https://toolbelt.treasuredata.com/sh/install-ubuntu-jammy-fluent-package5.sh | sh
+- name: Install fluentd
+  shell: curl -fsSL https://fluentd.cdn.cncf.io/sh/install-ubuntu-jammy-fluent-package6-lts.sh | sh
 
-- name: Write td-agent config
+- name: Write fluentd config
   ansible.builtin.copy:
-    dest: /etc/td-agent/td-agent.conf
+    dest: /etc/fluent/fluentd.conf
     content: |
       # This config defines 2 sources:
       # 1. syslog, which collects logs from nginx and the system
@@ -73,8 +73,8 @@
         </buffer>
       </match>
 
-- name: Reload td-agent service
+- name: Reload fluentd systemd service
   ansible.builtin.systemd:
-    name: td-agent.service
+    name: fluentd.service
     state: restarted
     daemon_reload: true
