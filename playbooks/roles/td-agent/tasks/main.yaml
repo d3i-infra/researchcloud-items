@@ -1,6 +1,6 @@
 ---
 - name: Install td-agent (a stable version of fluentd)
-  shell: curl -L https://toolbelt.treasuredata.com/sh/install-ubuntu-focal-td-agent4.sh | sh
+  shell: curl -fsSL https://toolbelt.treasuredata.com/sh/install-ubuntu-jammy-fluent-package5.sh | sh
 
 - name: Write td-agent config
   ansible.builtin.copy:
