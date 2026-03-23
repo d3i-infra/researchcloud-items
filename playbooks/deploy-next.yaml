@@ -151,7 +151,7 @@
         path: /docker-compose.yaml
         create: yes
         block: |
-          version: "3"
+          name: "{{ app_name }}"
 
           services:
             app:
@@ -212,6 +212,6 @@
             app_data:
 
     - name: Start container using the compose file
-      command: docker-compose -p "next" up -d
+      command: docker compose up -d
       args:
         chdir: /
