@@ -54,14 +54,14 @@
         name: perl
         state: present
 
-    - name: Add ansible markers in /etc/nginx/conf.d/ssl_main.conf
-      shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 443.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/ssl_main.conf
+    - name: Add ansible markers in /etc/nginx/conf.d/tls_main.conf
+      shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 443.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/tls_main.conf
 
     # Configure Nginx as reverse proxy added configs for Phoenix
     # The admin route is protected by Surf SRAM
     - name: Fill the location block of the ssl block
       blockinfile:
-        path: /etc/nginx/conf.d/ssl_main.conf
+        path: /etc/nginx/conf.d/tls_main.conf
         marker: "# {mark} ANSIBLE MANAGED BLOCK"
         block: |
           location /admin {
