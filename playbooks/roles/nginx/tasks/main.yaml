@@ -15,9 +15,9 @@
     state: present
     update_cache: yes
 
-- name: Ensure fcgiwrap service is started and enabled
+- name: Ensure fcgiwrap socket is started and enabled
   systemd:
-    name: fcgiwrap
+    name: fcgiwrap.socket
     state: started
     enabled: yes
 

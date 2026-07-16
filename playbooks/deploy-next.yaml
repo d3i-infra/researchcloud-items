@@ -49,6 +49,11 @@
         group: www-data
         mode: '0755'
     
+    - name: Install perl
+      apt:
+        name: perl
+        state: present
+
     - name: Add ansible markers in /etc/nginx/conf.d/ssl_main.conf
       shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 443.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/ssl_main.conf
 
@@ -152,6 +157,7 @@
         create: yes
         block: |
           name: "{{ app_name }}"
+
 
           services:
             app:

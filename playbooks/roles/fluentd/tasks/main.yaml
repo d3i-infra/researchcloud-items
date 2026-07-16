@@ -1,6 +1,6 @@
 ---
 - name: Install fluentd
-  shell: curl -fsSL https://fluentd.cdn.cncf.io/sh/install-ubuntu-jammy-fluent-package6-lts.sh | sh
+  shell: curl -fsSL https://fluentd.cdn.cncf.io/sh/install-ubuntu-noble-fluent-package6-lts.sh | sh
 
 - name: Write fluentd config
   ansible.builtin.copy:
