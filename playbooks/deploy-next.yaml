@@ -156,8 +156,7 @@
         path: /docker-compose.yaml
         create: yes
         block: |
-          name: "{{ app_name }}"
-
+          name: next
 
           services:
             app:
@@ -165,7 +164,7 @@
               container_name: self-d3i
               restart: always
               environment:
-                APP_NAME: "{{ app_name }}"
+                APP_NAME: next
                 APP_DOMAIN: "{{ domain_name }}"
                 APP_MAIL_DOMAIN: "@notrelevantanymore.com"
                 APP_ADMINS: "{{ surf_username }}"
