@@ -13,3 +13,20 @@ SRC-CO
 SRC-Nginx
 SRC-External plugin
 Your components
+
+## Local testing
+
+To test the self-hosted setup locally, use the compose file in the [mono](https://github.com/d3i-infra/mono) repo:
+
+```bash
+docker compose -f docker-compose.selfhosted.local.yml up --build
+```
+
+This builds the image, runs database migrations and seeds, and starts the app on `http://localhost:8000`. All values are inlined so no `.env` file is needed.
+
+To reset the database and start fresh:
+
+```bash
+docker compose -f docker-compose.selfhosted.local.yml down -v
+docker compose -f docker-compose.selfhosted.local.yml up --build
+```

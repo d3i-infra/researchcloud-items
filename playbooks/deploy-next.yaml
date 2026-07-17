@@ -3,8 +3,8 @@
   connection: local
   gather_facts: yes
   become: yes
-    #vars_files:
-    #  - ./external_vars.yaml
+  #vars_files:
+  #  - ./external_vars.yaml
   roles:
     - role: nginx
       tags: nginx_tag
@@ -125,96 +125,17 @@
         update: yes
         dest: ./mono
 
-    # create certificates for postgres
-    - name: Run certificate generation script
-      script: ./mono/postgres_ssl/generate.sh
-
-    - name: Copy server.crt to root directory
-      copy:
-        src: server.crt
-        dest: /server.crt
-
-    - name: Copy server.key to root directory
-      copy:
-        src: server.key
-        dest: /server.key
-
-    - name: Copy ca.crt to root directory
-      copy:
-        src: ca.crt
-        dest: /ca.crt
-
     # build
     - name: Build Next with Docker build
       shell:
-        cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self . -t self-d3i:latest
-        chdir: mono/core
+        cmd: docker build --build-arg VERSION=1.0.0 --build-arg BUNDLE=self --build-arg PLATFORM=aws --build-arg FORCE_SSL=false --target prod . -t self-d3i:latest
+        chdir: mono
 
     # deploy
-    - name: Create Docker Compose file
-      blockinfile:
-        path: /docker-compose.yaml
-        create: yes
-        block: |
-          name: next
-
-          services:
-            app:
-              image: self-d3i:latest
-              container_name: self-d3i
-              restart: always
-              environment:
-                APP_NAME: next
-                APP_DOMAIN: "{{ domain_name }}"
-                APP_MAIL_DOMAIN: "@notrelevantanymore.com"
-                APP_ADMINS: "{{ surf_username }}"
-                DB_NAME: "{{ database_name }}"
-                DB_HOST: db
-                DB_USER: "{{ database_user }}"
-                DB_PASS: "{{ database_password }}"
-                SECRET_KEY_BASE: "{{ secret_key_base }}"
-                STATIC_PATH: "/tmp"
-                UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
-                UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
-                STORAGE_SERVICES: "builtin"
-                DB_TLS_VERIFY: verify_peer
-                DB_CA_PATH: /ca.crt
-              volumes:
-                - app_data:/tmp
-                - /ca.crt:/ca.crt
-              depends_on:
-                - db
-              logging:
-                driver: "fluentd"
-                options:
-                  fluentd-address: 172.17.0.1:24224
-                  tag: next
-              ports:
-                - "8000:8000"
-
-            db:
-              image: postgres:15
-              container_name: db-next
-              restart: always
-              user: root
-              environment:
-                POSTGRES_USER: "{{ database_user }}"
-                POSTGRES_PASSWORD: "{{ database_password }}"
-                POSTGRES_DB: "{{ database_name }}"
-              volumes:
-                - postgres_data:/var/lib/postgresql/data
-                - /server.crt:/var/lib/postgresql/ssl/server.crt
-                - /server.key:/var/lib/postgresql/ssl/server.key
-              command: |
-                bash -c "
-                  chown postgres:postgres /var/lib/postgresql/ssl/server.key &&
-                  chmod 600 /var/lib/postgresql/ssl/server.key &&
-                  exec docker-entrypoint.sh postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/ssl/server.crt -c ssl_key_file=/var/lib/postgresql/ssl/server.key
-                "
-
-          volumes:
-            postgres_data:
-            app_data:
+    - name: Create Docker Compose file from template
+      template:
+        src: templates/docker-compose.yml.j2
+        dest: /docker-compose.yaml
 
     - name: Start container using the compose file
       command: docker compose up -d

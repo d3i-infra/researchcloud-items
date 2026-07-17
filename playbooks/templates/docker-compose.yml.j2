@@ -1,0 +1,56 @@
+name: next
+
+services:
+  app:
+    image: self-d3i:latest
+    container_name: self-d3i
+    restart: always
+    entrypoint: ["/app/docker-entrypoint.sh"]
+    environment:
+      APP_NAME: "next"
+      APP_DOMAIN: "{{ domain_name }}"
+      APP_MAIL_DOMAIN: "@notrelevant.com"
+      APP_ADMINS: "{{ surf_username }}"
+      SECRET_KEY_BASE: "{{ secret_key_base }}"
+      UPLOAD_PATH: "/data/uploads"
+      FELDSPAR_DATA_DONATION_PATH: "/data/datadonation"
+      STORAGE_SERVICES: "builtin"
+      DB_NAME: "{{ database_name }}"
+      DB_HOST: db
+      DB_USER: "{{ database_user }}"
+      DB_PASS: "{{ database_password }}"
+      DB_TLS_VERIFY: "disabled"
+      UNSPLASH_ACCESS_KEY: "{{ unsplash_access_key }}"
+      UNSPLASH_APP_NAME: "{{ unsplash_app_name }}"
+    volumes:
+      - app_data:/data
+    depends_on:
+      db:
+        condition: service_healthy
+    logging:
+      driver: "fluentd"
+      options:
+        fluentd-address: 172.17.0.1:24224
+        tag: next
+    ports:
+      - "8000:8000"
+
+  db:
+    image: postgres:15
+    container_name: db-next
+    restart: always
+    environment:
+      POSTGRES_USER: "{{ database_user }}"
+      POSTGRES_PASSWORD: "{{ database_password }}"
+      POSTGRES_DB: "{{ database_name }}"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U {{ database_user }} -d {{ database_name }}"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  app_data:

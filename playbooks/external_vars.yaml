@@ -1,0 +1,8 @@
+domain_name: fake-next.domain.nl
+surf_username: fake-surf-user
+database_name: next_db
+database_user: next_user
+database_password: fakePa55w0rd!ChangeMe
+secret_key_base: ZmFrZS1zZWNyZXQta2V5LWJhc2UtdGhpcy1pcy1ub3QtcmVhbC1kb250LXVzZS1pbi1wcm9k
+unsplash_access_key: fake_unsplash_access_key_not_real_1234567890
+unsplash_app_name: next
