@@ -49,13 +49,11 @@
         group: www-data
         mode: '0755'
     
-    - name: Install perl
-      apt:
-        name: perl
-        state: present
-
     - name: Add ansible markers in /etc/nginx/conf.d/tls_main.conf
-      shell: perl -0 -i -pe 's/(.*server {.*?})(.*?)(listen 443.*)/\1\n# BEGIN ANSIBLE MANAGED BLOCK\n# END ANSIBLE MANAGED BLOCK\n\3/gms' /etc/nginx/conf.d/tls_main.conf
+      replace:
+        path: /etc/nginx/conf.d/tls_main.conf
+        regexp: '^\s*include /etc/nginx/app-location-conf\.d/\*\.conf;\s*$'
+        replace: "    # BEGIN ANSIBLE MANAGED BLOCK\n    # END ANSIBLE MANAGED BLOCK"
 
     # Configure Nginx as reverse proxy added configs for Phoenix
     # The admin route is protected by Surf SRAM
