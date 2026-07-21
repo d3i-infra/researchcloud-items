@@ -60,7 +60,7 @@
     - name: Fill the location block of the ssl block
       blockinfile:
         path: /etc/nginx/conf.d/tls_main.conf
-        marker: "# {mark} ANSIBLE MANAGED BLOCK"
+        marker: "    # {mark} ANSIBLE MANAGED BLOCK"
         block: |
           location /admin {
             error_page 401 = @custom_401;
