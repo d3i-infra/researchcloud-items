@@ -53,7 +53,7 @@
       replace:
         path: /etc/nginx/conf.d/tls_main.conf
         regexp: '^\s*include /etc/nginx/app-location-conf\.d/\*\.conf;\s*$'
-        replace: "    # BEGIN ANSIBLE MANAGED BLOCK\n    # END ANSIBLE MANAGED BLOCK"
+        replace: "    include /etc/nginx/app-location-conf.d/*.conf;\n    # BEGIN ANSIBLE MANAGED BLOCK\n    # END ANSIBLE MANAGED BLOCK"
 
     # Configure Nginx as reverse proxy added configs for Phoenix
     # The admin route is protected by Surf SRAM
